@@ -1,16 +1,15 @@
-//OTAA
 #include <lmic.h>
 #include <hal/hal.h>
 #include <SPI.h>
-#include <SoftwareSerial.h>
 
 /* Here you can select the type of infomation you want to send */
 #define _USE_GPS_
 //#define _USE_TEMP_
-/* You only can select one */
+/* You can only select one */
 
 #ifdef _USE_GPS_    //GPS Configuration
 #include <TinyGPS++.h>
+#include <SoftwareSerial.h>
 SoftwareSerial ss(5, 4);
 TinyGPSPlus gps;
 double gps_lat = 0;
@@ -35,7 +34,7 @@ void os_getDevKey (u1_t* buf) {  memcpy_P(buf, APPKEY, 16);}
 static osjob_t blinkjob;
 static osjob_t readJob;
 
-const unsigned TX_INTERVAL = 30;
+const unsigned TX_INTERVAL = 30000; //Interval between each transmission in miliseconds
 
 // Pin mapping
 const lmic_pinmap lmic_pins = {
@@ -180,6 +179,7 @@ void onEvent (ev_t ev) {
             debugSerial.println(F("EV_JOINED"));
             // Disable link check validation (automatically enabled
             // during join, but not supported by TTN at this time).
+            // Once joined init the readJob and stop the Blinkjob.
             os_clearCallback(&blinkjob);
             digitalWrite(A0,false);
             readfunc(&readJob);
@@ -200,15 +200,15 @@ void onEvent (ev_t ev) {
               debugSerial.println(LMIC.dataLen);
               debugSerial.println(F(" bytes of payload"));
             }
-            os_setTimedCallback(&readJob, os_getTime()+ms2osticks(15000), readfunc);  // reschedule blink job
-            // Schedule next transmission
+            os_setTimedCallback(&readJob, os_getTime()+ms2osticks(TX_INTERVAL), readfunc);
+            // Schedule next read and transmission
           break;
         case EV_RXCOMPLETE:
             // data received in ping slot
             debugSerial.println(F("EV_RXCOMPLETE"));
             break;
          default:
-            //debugSerial.println(F("Unknown event"));
+            debugSerial.println(F("Unknown event"));
             //Serial.println(ev);
             break;
     }
@@ -221,6 +221,7 @@ void setup() {
   //initialize LED as output and at low state
   pinMode(A1, OUTPUT);
   pinMode(A0, OUTPUT);
+
   digitalWrite(A1, LOW);
   digitalWrite(A0, HIGH);
   delay(250);
@@ -248,10 +249,12 @@ void setup() {
   LMIC_enableChannel(70);
 
   LMIC_setLinkCheckMode(0);
-  LMIC_setAdrMode(false);
-  LMIC_setDrTxpow(DR_SF7, 14); //SF7
+  LMIC_setAdrMode(true); //Addative data rate
+  LMIC_setDrTxpow(DR_SF7, 14); //SF7 for the join
   LMIC_setClockError(MAX_CLOCK_ERROR * 1 / 100);
   previousMillis = millis();
+
+  //Start first transmission to do the Join
   const char first = "Join";
   if (LMIC.opmode & OP_TXRXPEND) {
     debugSerial.println(LMIC.opmode);

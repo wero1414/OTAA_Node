@@ -8,3 +8,5 @@ src/\.DS_Store
 \.DS_Store
 
 \.travis\.yml
+
+OTAA_GPS_TEMP/src/OTAAgps\.ino\.cpp
