@@ -1,0 +1,10 @@
+.pioenvs
+.piolibdeps
+.clang_complete
+.gcc-flags.json
+
+src/\.DS_Store
+
+\.DS_Store
+
+\.travis\.yml
